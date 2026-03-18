@@ -53,12 +53,12 @@ void robot::pinSetup() {
     #ifdef H_BRIDGE_RED
       // Configuración para el Puente en H Rojo
       this->pinENA = 7;  this->pinIN2 = 9;  this->pinIN1 = 8;
-      this->pinIN3 = 11; this->pinIN4 = 12; this->pinENB = 10;
+      this->pinIN3 = 11; this->pinIN4 = 12; this->pinENB = 10;      
     #endif
   #endif
   
   #ifdef ARDUINO_TYPE_NANO
-    this->pinLeftEncoder = 2;  this->pinRightEncoder = 3; 
+    this->pinLeftEncoder = 3;  this->pinRightEncoder = 2; 
     // (Configuraciones de pines para Nano...)
      #ifdef H_BRIDGE_BLACK
       // Configuración para el Puente en H Negro (L298N o similar)
@@ -76,7 +76,7 @@ void robot::pinSetup() {
 
   // Asignación de arrays para facilitar el manejo de motores [ENABLE, IN1, IN2]
   this->pinMotorRight[0] = pinENA; this->pinMotorRight[1] = pinIN1; this->pinMotorRight[2] = pinIN2;
-  this->pinMotorLeft[0] = pinENB;  this->pinMotorLeft[1] = pinIN3;  this->pinMotorLeft[2] = pinIN4;
+  this->pinMotorLeft[0] = pinENB;  this->pinMotorLeft[1] = pinIN4;  this->pinMotorLeft[2] = pinIN3;
 }
 
 // Configura todos los pines de control como salida
@@ -108,7 +108,7 @@ void robot::fullStopRightWheel() {
 
 // Lógica de decisión para la rueda derecha
 void robot::moveRightWheel(int pwm, double w, bool back) {
-    if(pwm == 0 || ((int)w) == 0) {
+    if(pwm == 0 ) {
         fullStopRightWheel(); // Si la velocidad es 0, frenar
     } else {
         if(back) moveBackward(this->pinMotorRight, pwm);
@@ -141,10 +141,6 @@ double robot::getRobotWheelRadius()
 {
     return this->RobotWheelRadius; // Valor por defecto: 3.35 cm
 }
-double robot::getL()
-{
-  return this->L;//10
-}
 
 /**
  * Detiene ambos motores inmediatamente.
@@ -165,7 +161,7 @@ void robot::fullStop()
 void robot::moveLeftWheel(int pwm, double w, bool back)
 {
     // Si la potencia es 0 o la velocidad deseada es 0, detenemos la rueda
-    if(pwm == 0 || ((int)w) == 0)
+    if(pwm == 0 )
     {
         fullStopLeftWheel();
     } 
@@ -183,6 +179,7 @@ void robot::moveLeftWheel(int pwm, double w, bool back)
     }
 }
 // Implementación de los métodos de parada individual (Freno activo)
+
 void robot::fullStopLeftWheel()
 {
     digitalWrite(this->pinMotorLeft[1], HIGH);

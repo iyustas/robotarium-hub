@@ -40,7 +40,6 @@ class robot
         double getRobotWheelDiameter();
         double getRobotWheelRadius();
         double getRobotDiameter();
-        double getL();
         uint8_t getRobotID();
         int getPinLeftEncoder();
         int getPinRightEncoder();
@@ -58,7 +57,7 @@ class robot
         int pinLeftEncoder;
         int pinRightEncoder;
         
-        double L=10; //distancia entre ruedas, modelo mkr
+
         double RobotWheelDiamter = 6.7;
         double RobotWheelRadius = 3.35;
         double RobotDiameter = 14.5;
