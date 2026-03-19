@@ -80,7 +80,7 @@ void isrLeft();        // Interrupción Rueda Izquierda
 void send(int operation, byte *data); // Envío de paquetes estructurados por Serial
 void connect();        // Gestión de la conexión WiFi/MQTT
 
-void envio_datos();//envia topic del arcuino a servidor
+void envio_datos(double vLineal, double vAngular , double wRight , double wLeft, double frecuencyRight , double frecuencyLeft);//envia topic del arcuino a servidor
 
 // --- VARIABLES GLOBALES DE ESTADO ---
 controler wheelControlerRight; // Controlador PID para la rueda derecha
@@ -272,12 +272,12 @@ void setup() {
     // setControlerParam: Ajusta las constantes PID (Kp=0.15, Ki=0.01, Kd=0.00)
     // setFeedForwardParam: Ajusta la compensación directa (Pendiente=0.0895, Offset=-5.424)
     wheelControlerRight.setControlerParam(0.15, 0.01, 0.00);
-    wheelControlerRight.setFeedForwardParam(0.0895, -5.424);
+    wheelControlerRight.setFeedForwardParam(11, 44);
 
     // Configuración del controlador de la rueda izquierda:
     // Los parámetros varían ligeramente para compensar diferencias mecánicas entre motores
     wheelControlerLeft.setControlerParam(0.15, 0.01, 0.00);
-    wheelControlerLeft.setFeedForwardParam(0.0772, -3.173);
+    wheelControlerLeft.setFeedForwardParam(11, 44);
 
     // Inicializa la comunicación Serie 1 (pines físicos) con la Raspberry Pi a 9600 baudios
     Serial1.begin(9600);
@@ -431,7 +431,12 @@ void loop() {
     {
       op_telemtry();
     }
-    
+    // 8.Calculo de velocidades recurrentes
+
+    double vLineal=(robot.getRobotWheelRadius() /2)*(wRight +wLeft);
+    double wAngular = (robot.getRobotWheelRadius() /robot.getL())*(wRight - wLeft) ;
+    // 9.llamada evio de los topic al servidor
+   envio_datos(vLineal,  wAngular ,  wRight ,  wLeft,  fD, fI);
     // Actualiza la marca de tiempo para el próximo ciclo de muestreo
     timeAfter = currentTime; 
   }
@@ -1258,7 +1263,7 @@ void onMqttMessage(int messageSize){
             Serial.print("tu valor de velocidad Motor izquierdo es :");
             Serial.println(VlinealLeft);
             //op_moveRobot(setpointWRight ,setpointWLeft);
-            envio_datos( VlinealRight ,  VlinealLeft);
+            
           }
         }
         else {
@@ -1423,7 +1428,7 @@ void connect() {
   mqttClient.print(messagePayload);
   // Nota: Falta mqttClient.endMessage() si la librería lo requiere para enviar el buffer.
 }
-void envio_datos(float VlinealRight , float VlinealLeft) {
+void envio_datos(double vLineal, double vAngular , double wRight , double wLeft, double frecuencyRight , double frecuencyLeft) {
 
 
 
@@ -1433,63 +1438,71 @@ void envio_datos(float VlinealRight , float VlinealLeft) {
   if (currentMillis - lastSendTime >= interval) {
     lastSendTime = currentMillis;  // actualizar el último envío
 
-
+   // creamos los strig de los topic 
+   //como tienen cierto paralelismo se an  generado en conjunto
+   String ID =String (robot.getRobotID());
+   String topicvelocity = "agent" + ID + "velocity";
+   String topicwheel = "agent" + ID + "wheel";
+   String topicodom = "agent" + ID + "odom";
 
     //envio topic velocity
     StaticJsonDocument<200> docvelocity;
-    docvelocity["left"] = VlinealLeft ;   // motor izquierdo
-    docvelocity["right"] = VlinealRight ;  // motor derecho
+    docvelocity["lineal"] = vLineal;   // motor izquierdo
+    docvelocity["angular"] = vAngular;  // motor derecho
 
-    char jsonBuffer[200];
-    serializeJson(doc, jsonBuffer);
+    char jsonBuffervelocity[200];
+    serializeJson(docvelocity, jsonBuffervelocity);
+    //creamos el nombre del topic
+    
+    // enviar mensaje al broker en un solo topic
+    mqttClient.beginMessage(topicvelocity);
+    mqttClient.print(jsonBuffervelocity);
+    mqttClient.endMessage();
+
+    Serial.println("Mensaje enviado en topic 'velocity':");
+    Serial.println(jsonBuffervelocity);
+    Serial.println("esta llegando");
+
+
+        //envio topic wheel
+
+    StaticJsonDocument<200> docwheel;
+    doc["Wleft"] = wLeft;   // motor izquierdo
+    doc["Wright"] = wRight;  // motor derecho
+
+    char jsonBufferwheel[200];
+    serializeJson(docwheel, jsonBufferwheel);
 
     // enviar mensaje al broker en un solo topic
-    mqttClient.beginMessage("velocity");
-    mqttClient.print(jsonBuffer);
+    mqttClient.beginMessage(topicwheel);
+    mqttClient.print(jsonBufferwheel);
     mqttClient.endMessage();
 
     Serial.println("Mensaje enviado en topic 'wheel':");
-    Serial.println(jsonBuffer);
+    Serial.println(jsonBufferwheel);
+    Serial.println("esta llegando");
+  
+   
+    //envio topic odom
+    StaticJsonDocument<200> docodom;
+    doc["frecuencyRight"] =frecuencyRight ;   //frecuencia motor izquierdo
+    doc["frecuencyLeft"] = frecuencyLeft ;  // frecuencia motor derecho
+
+    char jsonBufferodom[200];
+    serializeJson(docodom, jsonBufferodom);
+
+    // enviar mensaje al broker en un solo topic
+    mqttClient.beginMessage("velocity");
+    mqttClient.print(jsonBufferodom);
+    mqttClient.endMessage();
+
+    Serial.println("Mensaje enviado en topic 'odom':");
+    Serial.println(jsonBufferodom);
     Serial.println("esta llegando");
     
 
    
-    //envio topic odom
-    StaticJsonDocument<200> doc;
-    doc["left"] = VlinealLeft ;   // motor izquierdo
-    doc["right"] = VlinealRight ;  // motor derecho
-
-    char jsonBuffer[200];
-    serializeJson(doc, jsonBuffer);
-
-    // enviar mensaje al broker en un solo topic
-    mqttClient.beginMessage("velocity");
-    mqttClient.print(jsonBuffer);
-    mqttClient.endMessage();
-
-    Serial.println("Mensaje enviado en topic 'wheel':");
-    Serial.println(jsonBuffer);
-    Serial.println("esta llegando");
-    
-    //envio topic wheel
-
-    StaticJsonDocument<200> doc;
-    doc["left"] = VlinealLeft ;   // motor izquierdo
-    doc["right"] = VlinealRight ;  // motor derecho
-
-    char jsonBuffer[200];
-    serializeJson(doc, jsonBuffer);
-
-    // enviar mensaje al broker en un solo topic
-    mqttClient.beginMessage("velocity");
-    mqttClient.print(jsonBuffer);
-    mqttClient.endMessage();
-
-    Serial.println("Mensaje enviado en topic 'wheel':");
-    Serial.println(jsonBuffer);
-    Serial.println("esta llegando");
-
-    delay(5000);
+    delay(500);
   }
 
 
