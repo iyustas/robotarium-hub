@@ -271,12 +271,12 @@ void setup() {
     // Configuración del controlador de la rueda derecha:
     // setControlerParam: Ajusta las constantes PID (Kp=0.15, Ki=0.01, Kd=0.00)
     // setFeedForwardParam: Ajusta la compensación directa (Pendiente=0.0895, Offset=-5.424)
-    wheelControlerRight.setControlerParam(0.15, 0.01, 0.00);
+    wheelControlerRight.setControlerParam(1.00, 0.00, 0.00);
     wheelControlerRight.setFeedForwardParam(11, 44);
 
     // Configuración del controlador de la rueda izquierda:
     // Los parámetros varían ligeramente para compensar diferencias mecánicas entre motores
-    wheelControlerLeft.setControlerParam(0.15, 0.01, 0.00);
+    wheelControlerLeft.setControlerParam(1.00, 0.00, 0.00);
     wheelControlerLeft.setFeedForwardParam(11, 44);
 
     // Inicializa la comunicación Serie 1 (pines físicos) con la Raspberry Pi a 9600 baudios
@@ -348,7 +348,10 @@ void loop() {
   // avoids being disconnected by the broker
    mqttClient.poll();
   #endif
-  
+ op_moveRobot(6,6);
+  delay(20000);
+  op_moveRobot(20,0);
+  delay(20000);
   // 3. PREPARACIÓN DE DATOS DE SENSORES
   int auxPWMD = 0, auxPWMI = 0; // Variables auxiliares para evitar enviar PWM repetido
   double fD, fI;                // Frecuencia de los encoders (pulsos por segundo)
@@ -407,10 +410,10 @@ void loop() {
         DEBUG_PRINT(" wLeft:");
         DEBUG_PRINTLN(wLeft);
         
-        Serial.print("wRight:");
-        Serial.print(wRight);
-        Serial.print(" wLeft:");
-        Serial.println(wLeft);
+        //Serial.print("wRight:");
+        //Serial.print(wRight);
+        //Serial.print(" wLeft:");
+        //Serial.println(wLeft);
       }
     }
     
@@ -645,10 +648,10 @@ void op_moveRobot(double setpointWRight, double setpointWLeft) {
   PWM_Left = wheelControlerLeft.feedForward();
   PWM_Right = wheelControlerRight.feedForward();
 
-  DEBUG_PRINT("PWM_Left:");
-  DEBUG_PRINT(PWM_Left);
-  DEBUG_PRINT(" PWM_Right:");
-  DEBUG_PRINTLN(PWM_Right);
+  //DEBUG_PRINT("PWM_Left:");
+  //DEBUG_PRINT(PWM_Left);
+  //DEBUG_PRINT(" PWM_Right:");
+  //DEBUG_PRINTLN(PWM_Right);
 
   // 6. EJECUCIÓN FÍSICA:
   // Se envían las señales a los puentes en H a través de la clase robot.
@@ -1183,13 +1186,13 @@ void onMqttMessage(int messageSize){
 };
 */
 
-  Serial.print("Mensaje recibido en el topic ");
+  //Serial.print("Mensaje recibido en el topic ");
   String topicausiliar = mqttClient.messageTopic();//guardamos topic para poder comparar 
-  Serial.println(topicausiliar);
+  //Serial.println(topicausiliar);
   //Serial.println(mqttClient.messageTopic());
-  Serial.print(" Tamaño: ");
-  Serial.print(messageSize);
-  Serial.println(" bytes");//Json
+  //Serial.print(" Tamaño: ");
+  //Serial.print(messageSize);
+  //Serial.println(" bytes");//Json
   String incoming = "";//Json
 
     while(mqttClient.available()){
@@ -1197,8 +1200,8 @@ void onMqttMessage(int messageSize){
     }
   DeserializationError error = deserializeJson(doc, incoming);
   
-  Serial.print("contenido mansage: ");
-  Serial.println(incoming);
+  //Serial.print("contenido mansage: ");
+  //Serial.println(incoming);
 //de aqui
  //String topic = mqttClient.messageTopic();
  //if (topic == "data") {
@@ -1246,7 +1249,7 @@ void onMqttMessage(int messageSize){
       //else if ((topicausiliar.equals("agent/4/move")){ //version de si es justo agent/4/move
       //conversion de velocidad linial y angular a velocidad motor derecho e izquierdo
             Serial.println(" Llegó mensaje del topic MOVE");
-            float V = doc["v"], W = doc["w"];
+            double V = doc["v"], W = doc["w"];
             Serial.print("V=");
             Serial.print(V); 
             Serial.print(", W=");
@@ -1256,13 +1259,13 @@ void onMqttMessage(int messageSize){
             Serial.println(robot.getRobotWheelRadius());
             Serial.println(((robot.getL() / 2.0)));
 
-            double VlinealRight=(V + (W* (robot.getL() / 2.0))) / robot.getRobotWheelRadius() ;//derecha
-            double VlinealLeft=(V - (W* (robot.getL() / 2.0))) / robot.getRobotWheelRadius() ;//izquierda
-            Serial.print("tu valor de velocidad Motor derecho es :");
-            Serial.println(VlinealRight);
-            Serial.print("tu valor de velocidad Motor izquierdo es :");
-            Serial.println(VlinealLeft);
-            //op_moveRobot(setpointWRight ,setpointWLeft);
+            double wlinealRight=(V + (W* (robot.getL() / 2.0))) / robot.getRobotWheelRadius() ;//derecha
+            double wlinealLeft=(V - (W* (robot.getL() / 2.0))) / robot.getRobotWheelRadius() ;//izquierda
+            Serial.print("tu valor de velocidad angular Motor derecho es :");
+            Serial.println(wlinealRight);
+            Serial.print("tu valor de velocidad angular Motor izquierdo es :");
+            Serial.println(wlinealLeft);
+           // op_moveRobot(wlinealRight ,wlinealLeft);
             
           }
         }
@@ -1430,8 +1433,8 @@ void connect() {
 }
 void envio_datos(double vLineal, double vAngular , double wRight , double wLeft, double frecuencyRight , double frecuencyLeft) {
 
-
-
+//IPAddress ip = WiFi.localIP();
+//Serial.println( ip );
   unsigned long currentMillis = millis();
 
   // Si han pasado 20 segundos desde el último envío
@@ -1441,9 +1444,9 @@ void envio_datos(double vLineal, double vAngular , double wRight , double wLeft,
    // creamos los strig de los topic 
    //como tienen cierto paralelismo se an  generado en conjunto
    String ID =String (robot.getRobotID());
-   String topicvelocity = "agent" + ID + "velocity";
-   String topicwheel = "agent" + ID + "wheel";
-   String topicodom = "agent" + ID + "odom";
+   String topicvelocity = "agent/" + ID + "/velocity";
+   String topicwheel = "agent/" + ID + "/wheel";
+   String topicodom = "agent/" + ID + "/odon";
 
     //envio topic velocity
     StaticJsonDocument<200> docvelocity;
@@ -1459,16 +1462,16 @@ void envio_datos(double vLineal, double vAngular , double wRight , double wLeft,
     mqttClient.print(jsonBuffervelocity);
     mqttClient.endMessage();
 
-    Serial.println("Mensaje enviado en topic 'velocity':");
-    Serial.println(jsonBuffervelocity);
-    Serial.println("esta llegando");
+    //Serial.println("Mensaje enviado en topic 'velocity':");
+    //Serial.println(jsonBuffervelocity);
+    //Serial.println("esta llegando");
 
 
         //envio topic wheel
 
     StaticJsonDocument<200> docwheel;
-    doc["Wleft"] = wLeft;   // motor izquierdo
-    doc["Wright"] = wRight;  // motor derecho
+    docwheel["Wleft"] = wLeft;   // motor izquierdo
+    docwheel["Wright"] = wRight;  // motor derecho
 
     char jsonBufferwheel[200];
     serializeJson(docwheel, jsonBufferwheel);
@@ -1480,25 +1483,25 @@ void envio_datos(double vLineal, double vAngular , double wRight , double wLeft,
 
     Serial.println("Mensaje enviado en topic 'wheel':");
     Serial.println(jsonBufferwheel);
-    Serial.println("esta llegando");
+    //Serial.println("esta llegando");
   
    
     //envio topic odom
     StaticJsonDocument<200> docodom;
-    doc["frecuencyRight"] =frecuencyRight ;   //frecuencia motor izquierdo
-    doc["frecuencyLeft"] = frecuencyLeft ;  // frecuencia motor derecho
+    docodom["frecuencyRight"] =frecuencyRight;   //frecuencia motor izquierdo 
+    docodom["frecuencyLeft"] = frecuencyLeft ;  // frecuencia motor derecho
 
     char jsonBufferodom[200];
     serializeJson(docodom, jsonBufferodom);
 
     // enviar mensaje al broker en un solo topic
-    mqttClient.beginMessage("velocity");
+    mqttClient.beginMessage(topicodom);
     mqttClient.print(jsonBufferodom);
     mqttClient.endMessage();
 
-    Serial.println("Mensaje enviado en topic 'odom':");
-    Serial.println(jsonBufferodom);
-    Serial.println("esta llegando");
+    //Serial.println("Mensaje enviado en topic 'odom':");
+    //Serial.println(jsonBufferodom);
+    //Serial.println("esta llegando");
     
 
    
